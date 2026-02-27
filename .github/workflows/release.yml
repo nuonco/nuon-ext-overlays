@@ -1,0 +1,72 @@
+name: Release
+
+# the intention here is to always have a release (automated)
+# but this workflow can be triggered from a workflow in nuonco/nuon
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Check daily at 06:00 UTC for a new API version
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Get API version
+        id: version
+        run: |
+          API_VERSION=$(curl -sS https://api.nuon.co/version | jq -r '.version')
+          echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "API version: $API_VERSION"
+
+      - name: Check if release already exists
+        id: check
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists, skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG does not exist, proceeding."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download latest spec
+        if: steps.check.outputs.exists == 'false'
+        run: curl -sS https://api.nuon.co/docs/doc.json -o spec/doc.json
+
+      - name: Commit spec and create tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spec/doc.json
+          git diff --cached --quiet || git commit -m "spec: update to ${TAG}"
+          git tag -a "$TAG" -m "Release ${TAG}"
+          git push origin main --tags
+
+      - name: Run GoReleaser
+        if: steps.check.outputs.exists == 'false'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.tag }}

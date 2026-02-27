@@ -1,0 +1,16 @@
+{
+  "name": "overlays",
+  "description": "Apply Kustomize-style config overlays to Nuon app configurations",
+  "repo": "nuonco/nuon-ext-overlays",
+  "version": "0.0.1",
+  "tag": "0.0.1",
+  "installed_at": "2026-02-20T00:00:00Z",
+  "updated_at": "2026-02-20T00:00:00Z",
+  "binary": "",
+  "type": "script",
+  "entrypoint": "nuon-ext-overlays",
+  "platform": "darwin/arm64",
+  "min_cli_version": "",
+  "requires_token": false,
+  "requires_org": false
+}

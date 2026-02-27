@@ -1,0 +1,7 @@
+[extension]
+name = "overlays"
+description = "Apply Kustomize-style config overlays to Nuon app configurations"
+
+[extension.auth]
+requires_token = false
+requires_org = false
