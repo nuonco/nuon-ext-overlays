@@ -1,0 +1,6 @@
+name = "dev"
+approval_option = "manual"
+
+[parameters]
+environment = "development"
+region = "us-west-2"

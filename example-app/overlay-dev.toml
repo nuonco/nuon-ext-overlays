@@ -1,0 +1,18 @@
+version = "1"
+
+# Disable drift detection on all components for local dev
+[[patches]]
+target = "components[*]"
+[patches.set]
+drift_schedule = ""
+
+# Auto-approve the dev install
+[[patches]]
+target = 'installs[name="dev"]'
+[patches.set]
+approval_option = "approve-all"
+
+# Remove all policies in dev
+[[patches]]
+target = "policies"
+strategy = "delete"

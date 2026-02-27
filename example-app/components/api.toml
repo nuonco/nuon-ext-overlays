@@ -1,0 +1,8 @@
+name = "api"
+type = "helm_chart"
+chart = "./charts/api"
+drift_schedule = "*/15 * * * *"
+
+[values]
+replicaCount = 2
+image = "acme/api:latest"

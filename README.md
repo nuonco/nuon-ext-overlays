@@ -80,10 +80,38 @@ contents = "./block-mutable-tags.rego"
 - **`replace`**: Replace the entire section with `value`
 - **`delete`**: Remove the section entirely
 
-## Composing Overlays
+## Example
 
-Multiple overlays are applied left-to-right:
+The [`example-app/`](example-app/) directory contains a full working example you can try locally:
+
+```
+example-app/
+├── nuon.toml          # root config (sandbox, runner)
+├── components/
+│   ├── api.toml       # helm chart component
+│   └── worker.toml    # helm chart component
+├── installs/
+│   ├── dev.toml       # dev install
+│   └── prod.toml      # prod install
+└── policies.toml      # OPA policies
+└── overlay.toml       # disable drift, auto-approve dev, drop policies
+```
+
+Preview what the overlay would change:
 
 ```bash
-nuon overlays apply -o base.toml -o prod.toml --dir ./my-app
+cd example-app
+nuon overlays preview -f overlay-dev.toml
 ```
+
+Apply an overlay and write patched config to a directory:
+
+```bash
+nuon overlays preview -f overlay-dev.toml -o /tmp/patched
+```
+
+An example overlay might:
+
+1. **Disable drift** on every component (`components[*]` → `drift_schedule = ""`)
+2. **Auto-approve** the `dev` install (`installs[name="dev"]` → `approval_option = "approve-all"`)
+3. **Remove all policies** (`policies` → `strategy = "delete"`)

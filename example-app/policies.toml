@@ -1,0 +1,7 @@
+[[policies]]
+name = "block-mutable-tags"
+contents = "./policies/block-mutable-tags.rego"
+
+[[policies]]
+name = "require-labels"
+contents = "./policies/require-labels.rego"

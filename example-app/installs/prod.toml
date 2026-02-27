@@ -1,0 +1,6 @@
+name = "prod"
+approval_option = "manual"
+
+[parameters]
+environment = "production"
+region = "us-east-1"

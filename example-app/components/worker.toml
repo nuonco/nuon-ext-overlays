@@ -1,0 +1,8 @@
+name = "worker"
+type = "helm_chart"
+chart = "./charts/worker"
+drift_schedule = "*/15 * * * *"
+
+[values]
+replicaCount = 1
+image = "acme/worker:latest"

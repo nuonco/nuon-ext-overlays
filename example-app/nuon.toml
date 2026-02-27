@@ -1,0 +1,8 @@
+[app]
+name = "acme-saas"
+
+[sandbox]
+drift_schedule = "*/15 * * * *"
+
+[runner]
+runner_type = "default"
