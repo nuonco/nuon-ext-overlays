@@ -1,0 +1,2 @@
+type = "aws-eks"
+drift_schedule = "*/15 * * * *"

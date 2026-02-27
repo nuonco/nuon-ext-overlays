@@ -18,8 +18,9 @@ const (
 
 // Overlay is the top-level overlay.toml structure.
 type Overlay struct {
-	Version string  `toml:"version"`
-	Patches []Patch `toml:"patches"`
+	Version string   `toml:"version"`
+	Bases   []string `toml:"bases,omitempty"`
+	Patches []Patch  `toml:"patches"`
 }
 
 // Patch describes a single overlay patch targeting a config section.
@@ -61,8 +62,8 @@ func Parse(data []byte) (*Overlay, error) {
 
 // Validate checks that the overlay is well-formed.
 func (o *Overlay) Validate() error {
-	if len(o.Patches) == 0 {
-		return fmt.Errorf("overlay has no patches")
+	if len(o.Bases) == 0 && len(o.Patches) == 0 {
+		return fmt.Errorf("overlay must have at least one base or patch")
 	}
 	for i, p := range o.Patches {
 		if p.Target == "" {

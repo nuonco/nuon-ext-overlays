@@ -1,0 +1,11 @@
+name = "load_balancer"
+type = "terraform_module"
+terraform_version = "1.11.3"
+
+[connected_repo]
+repo = "acme/infra"
+directory = "src/components/gcp-lb"
+branch = "main"
+
+[vars]
+region = "us-central1"

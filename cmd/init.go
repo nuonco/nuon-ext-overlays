@@ -22,12 +22,18 @@ func initCmd() *cobra.Command {
 with example patches for each discoverable section (components, installs,
 sandbox, policies, etc.).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := patcher.LoadConfigDir(appDir)
+			bases, err := collectBases(overlayFiles)
 			if err != nil {
-				return fmt.Errorf("loading config dir: %w", err)
+				// No existing overlay files is fine for init; use empty bases.
+				bases = nil
 			}
 
-			content := generateOverlayTemplate(cfg)
+			bundle, err := patcher.LoadConfigBundle(appDir, bases)
+			if err != nil {
+				return fmt.Errorf("loading config bundle: %w", err)
+			}
+
+			content := generateOverlayTemplate(bundle.Toml)
 
 			if output == "" || output == "-" {
 				fmt.Print(content)

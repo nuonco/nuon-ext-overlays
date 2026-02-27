@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
+	"github.com/nuonco/nuon-ext-overlays/internal/overlay"
 )
 
 var (
@@ -70,6 +72,7 @@ Commands:
 		applyCmd(),
 		validateCmd(),
 		initCmd(),
+		compareCmd(),
 	)
 
 	if err := root.Execute(); err != nil {
@@ -84,8 +87,43 @@ func resolveOverlayPath(overlayFile string) string {
 	if filepath.IsAbs(overlayFile) {
 		return overlayFile
 	}
+	// Try resolving relative to the caller's original PWD first,
+	// since the extension runner may have changed the working directory.
+	if pwd := os.Getenv("PWD"); pwd != "" {
+		candidate := filepath.Join(pwd, overlayFile)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
 	if _, err := os.Stat(overlayFile); err == nil {
 		return overlayFile
 	}
 	return filepath.Join(appDir, overlayFile)
+}
+
+// collectBases parses each overlay file and returns deduplicated, resolved
+// base directory paths (order preserved). Each base path in an overlay is
+// resolved relative to the overlay file's directory.
+func collectBases(overlayFileArgs []string) ([]string, error) {
+	seen := make(map[string]bool)
+	var bases []string
+
+	for _, overlayFile := range overlayFileArgs {
+		resolved := resolveOverlayPath(overlayFile)
+		o, err := overlay.ParseFile(resolved)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s for bases: %w", overlayFile, err)
+		}
+
+		overlayDir := filepath.Dir(resolved)
+		for _, b := range o.Bases {
+			abs := filepath.Clean(filepath.Join(overlayDir, b))
+			if !seen[abs] {
+				seen[abs] = true
+				bases = append(bases, abs)
+			}
+		}
+	}
+
+	return bases, nil
 }

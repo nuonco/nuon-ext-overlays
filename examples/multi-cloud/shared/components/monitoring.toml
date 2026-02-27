@@ -1,0 +1,12 @@
+name = "monitoring"
+type = "helm_chart"
+chart_name = "vmagent"
+namespace = "observability"
+
+[helm_repo]
+repo_url = "https://victoriametrics.github.io/helm-charts/"
+chart = "victoria-metrics-agent"
+version = "0.28.0"
+
+[values]
+scrape_interval = "60s"

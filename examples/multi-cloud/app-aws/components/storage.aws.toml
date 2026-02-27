@@ -1,0 +1,11 @@
+name = "storage"
+type = "terraform_module"
+terraform_version = "1.11.3"
+
+[connected_repo]
+repo = "acme/infra"
+directory = "src/components/s3"
+branch = "main"
+
+[vars]
+bucket_prefix = "acme-data"

@@ -1,0 +1,11 @@
+name = "load_balancer"
+type = "terraform_module"
+terraform_version = "1.11.3"
+
+[connected_repo]
+repo = "acme/infra"
+directory = "src/components/nlb"
+branch = "main"
+
+[vars]
+availability_zones = "us-east-1a,us-east-1b,us-east-1c"

@@ -15,6 +15,18 @@ import (
 // Keys are relative file paths, values are the parsed TOML data.
 type ConfigDir map[string]map[string]any
 
+// Asset represents a non-TOML file in a config directory.
+type Asset struct {
+	Bytes []byte
+	Mode  os.FileMode
+}
+
+// ConfigBundle holds both parsed TOML files and raw asset files from a config directory.
+type ConfigBundle struct {
+	Toml   ConfigDir
+	Assets map[string]Asset // non-.toml files keyed by relative path
+}
+
 // LoadConfigDir reads all .toml files from a directory tree into memory.
 func LoadConfigDir(dir string) (ConfigDir, error) {
 	cfg := make(ConfigDir)
@@ -205,4 +217,132 @@ func copyMap(src map[string]any) map[string]any {
 		dst[k] = v
 	}
 	return dst
+}
+
+// skipDir returns true for directories that should be ignored during config loading.
+func skipDir(name string) bool {
+	switch name {
+	case ".git", ".jj", ".github":
+		return true
+	}
+	return false
+}
+
+// skipFile returns true for files that should be ignored during config loading.
+func skipFile(name string) bool {
+	return name == "overlay.toml" || strings.HasPrefix(name, "overlay") && strings.HasSuffix(name, ".toml")
+}
+
+// arraySections are TOML section names that hold arrays of items with unique "name" fields.
+var arraySections = []string{"components", "actions", "installs"}
+
+// LoadConfigBundle loads a composed config bundle from a main directory and optional base directories.
+// Sources are applied in order: baseDirs first (in order), then mainDir (highest precedence).
+func LoadConfigBundle(mainDir string, baseDirs []string) (*ConfigBundle, error) {
+	bundle := &ConfigBundle{
+		Toml:   make(ConfigDir),
+		Assets: make(map[string]Asset),
+	}
+
+	// Build source list: bases first, main last (highest precedence)
+	sources := make([]string, 0, len(baseDirs)+1)
+	sources = append(sources, baseDirs...)
+	sources = append(sources, mainDir)
+
+	for _, srcDir := range sources {
+		err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				if skipDir(info.Name()) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			rel, err := filepath.Rel(srcDir, path)
+			if err != nil {
+				return err
+			}
+
+			if skipFile(info.Name()) {
+				return nil
+			}
+
+			if strings.HasSuffix(info.Name(), ".toml") {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					return fmt.Errorf("reading %s: %w", rel, err)
+				}
+				var doc map[string]any
+				if err := toml.Unmarshal(data, &doc); err != nil {
+					return fmt.Errorf("parsing %s: %w", rel, err)
+				}
+				bundle.Toml[rel] = doc
+			} else {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					return fmt.Errorf("reading %s: %w", rel, err)
+				}
+				if len(data) == 0 {
+					return nil
+				}
+				bundle.Assets[rel] = Asset{
+					Bytes: data,
+					Mode:  info.Mode(),
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("walking %s: %w", srcDir, err)
+		}
+	}
+
+	// Validate no duplicate names in array sections across different files.
+	for _, section := range arraySections {
+		prefix := section + string(filepath.Separator)
+		seen := make(map[string]string) // name -> source file
+		for relPath, doc := range bundle.Toml {
+			if !strings.HasPrefix(relPath, prefix) {
+				continue
+			}
+			nameVal, ok := doc["name"]
+			if !ok {
+				continue
+			}
+			name, ok := nameVal.(string)
+			if !ok {
+				continue
+			}
+			if prev, dup := seen[name]; dup {
+				return nil, fmt.Errorf("duplicate %s name %q in %s and %s", section, name, prev, relPath)
+			}
+			seen[name] = relPath
+		}
+	}
+
+	return bundle, nil
+}
+
+// WriteConfigBundle writes both TOML files and raw asset files to a destination directory.
+func WriteConfigBundle(b *ConfigBundle, destDir string) error {
+	if err := WriteConfigDir(b.Toml, destDir); err != nil {
+		return err
+	}
+
+	for relPath, asset := range b.Assets {
+		fullPath := filepath.Join(destDir, relPath)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+			return fmt.Errorf("creating directory for %s: %w", relPath, err)
+		}
+		if err := os.WriteFile(fullPath, asset.Bytes, asset.Mode); err != nil {
+			return fmt.Errorf("writing %s: %w", relPath, err)
+		}
+	}
+
+	return nil
 }

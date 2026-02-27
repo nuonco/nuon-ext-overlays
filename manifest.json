@@ -11,6 +11,6 @@
   "entrypoint": "nuon-ext-overlays",
   "platform": "darwin/arm64",
   "min_cli_version": "",
-  "requires_token": false,
-  "requires_org": false
+  "requires_token": true,
+  "requires_org": true
 }

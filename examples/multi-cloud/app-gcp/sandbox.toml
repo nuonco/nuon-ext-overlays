@@ -1,0 +1,2 @@
+type = "gcp-gke"
+drift_schedule = "*/15 * * * *"

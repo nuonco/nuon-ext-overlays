@@ -15,9 +15,14 @@ func validateCmd() *cobra.Command {
 		Use:   "validate",
 		Short: "Validate overlay.toml syntax and selectors against the config",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := patcher.LoadConfigDir(appDir)
+			bases, err := collectBases(overlayFiles)
 			if err != nil {
-				return fmt.Errorf("loading config dir: %w", err)
+				return err
+			}
+
+			bundle, err := patcher.LoadConfigBundle(appDir, bases)
+			if err != nil {
+				return fmt.Errorf("loading config bundle: %w", err)
 			}
 
 			for _, overlayFile := range overlayFiles {
@@ -37,7 +42,7 @@ func validateCmd() *cobra.Command {
 						return fmt.Errorf("overlay %s patch %d: %w", overlayFile, i, err)
 					}
 
-					matches := countMatches(cfg, sel)
+					matches := countMatches(bundle.Toml, sel)
 					if matches == 0 {
 						fmt.Printf("⚠ overlay %s patch %d: selector %q matched 0 targets\n", overlayFile, i, p.Target)
 					} else {

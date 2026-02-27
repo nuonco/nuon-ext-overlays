@@ -23,14 +23,19 @@ func previewCmd() *cobra.Command {
 Optionally write the patched config to a directory with --output:
   nuon overlays preview -d ./my-app -o /tmp/patched`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			original, err := patcher.LoadConfigDir(appDir)
+			bases, err := collectBases(overlayFiles)
 			if err != nil {
-				return fmt.Errorf("loading config dir: %w", err)
+				return err
 			}
 
-			patched, err := patcher.LoadConfigDir(appDir)
+			original, err := patcher.LoadConfigBundle(appDir, bases)
 			if err != nil {
-				return fmt.Errorf("loading config dir: %w", err)
+				return fmt.Errorf("loading config bundle: %w", err)
+			}
+
+			patched, err := patcher.LoadConfigBundle(appDir, bases)
+			if err != nil {
+				return fmt.Errorf("loading config bundle: %w", err)
 			}
 
 			for _, overlayFile := range overlayFiles {
@@ -41,12 +46,12 @@ Optionally write the patched config to a directory with --output:
 				if err := o.Validate(); err != nil {
 					return fmt.Errorf("overlay %s: %w", overlayFile, err)
 				}
-				if err := patcher.Apply(patched, o); err != nil {
+				if err := patcher.Apply(patched.Toml, o); err != nil {
 					return fmt.Errorf("applying %s: %w", overlayFile, err)
 				}
 			}
 
-			diffs := preview.Generate(original, patched)
+			diffs := preview.Generate(original.Toml, patched.Toml)
 			preview.PrintDiffs(os.Stdout, diffs)
 
 			if len(diffs) == 0 {
@@ -60,7 +65,7 @@ Optionally write the patched config to a directory with --output:
 						outputDir = filepath.Join(pwd, outputDir)
 					}
 				}
-				if err := patcher.WriteConfigDir(patched, outputDir); err != nil {
+				if err := patcher.WriteConfigBundle(patched, outputDir); err != nil {
 					return fmt.Errorf("writing patched config: %w", err)
 				}
 				fmt.Printf("\nPatched config written to: %s\n", outputDir)

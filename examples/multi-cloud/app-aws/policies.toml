@@ -1,0 +1,7 @@
+[[policy]]
+type = "kubernetes_cluster"
+contents = "./rbac-view.yml"
+
+[[policy]]
+type = "kubernetes_cluster"
+contents = "./rbac-manage.yml"
